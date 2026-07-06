@@ -1,0 +1,27 @@
+# 实验二依赖包
+
+# 环境变量管理
+python-dotenv>=1.0.0
+
+# 基础数据分析
+pandas>=2.2.0
+numpy>=1.26.4
+requests>=2.31.0
+
+# 图结构和可视化
+networkx>=3.4.2
+matplotlib>=3.8.0
+
+# 各语言预编译语法包
+tree-sitter>=0.20.0
+tree-sitter-languages>=1.10.2
+
+
+# 后续步骤依赖
+scikit-learn>=1.7.2
+joblib>=1.5.3
+scipy>=1.15.3
+
+# 开发工具
+jupyter>=1.0.0
+tqdm>=4.66.0
