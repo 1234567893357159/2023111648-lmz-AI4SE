@@ -69,8 +69,9 @@ class CodeExtractor:
         match = re.search(r"/raw/([a-f0-9]{40})/", raw_url)
         return match.group(1) if match else None
 
-    def _get_parent_sha(self, owner: str, repo_name: str, commit_sha: str) -> Optional[str]:
+    def _get_parent_sha(self, owner: str, repo_name: str, commit_sha: str, retry_count: int = 0) -> Optional[str]:
         """通过 GitHub API 获取 commit 的 parent SHA"""
+        MAX_RETRY = 3
         if commit_sha in self.parent_sha_cache:
             return self.parent_sha_cache[commit_sha]
 
@@ -84,23 +85,27 @@ class CodeExtractor:
                     parent_sha = parents[0]["sha"]
                     self.parent_sha_cache[commit_sha] = parent_sha
                     return parent_sha
-            elif resp.status_code == 403:
-                print(f"    ⚠️ API 限流，等待 60 秒...")
+            elif resp.status_code == 403 and retry_count < MAX_RETRY:
+                print(f"    ⚠️ API 限流，等待 60 秒... (重试 {retry_count+1}/{MAX_RETRY})")
                 time.sleep(60)
-                return self._get_parent_sha(owner, repo_name, commit_sha)
+                return self._get_parent_sha(owner, repo_name, commit_sha, retry_count + 1)
+            elif resp.status_code == 403:
+                print(f"    ⚠️ API 限流已达最大重试次数，放弃获取 parent commit")
             else:
                 print(f"    ⚠️ 获取 parent commit 失败: HTTP {resp.status_code}")
         except Exception as e:
             print(f"    ⚠️ 网络错误: {e}")
         return None
 
-    def _download_raw_file(self, url: str, notfound_marker: str = None) -> Optional[str]:
+    def _download_raw_file(self, url: str, notfound_marker: str = None, retry_count: int = 0) -> Optional[str]:
         """下载 GitHub raw 文件内容，支持 github.com/raw 和 raw.githubusercontent.com
         
         Args:
             url: 下载链接
             notfound_marker: 如果提供，404 时会创建这个标记文件，后续不再重试
+            retry_count: 当前重试次数，最多重试 3 次
         """
+        MAX_RETRY = 3
         # 将 github.com/.../raw/... 格式转为 raw.githubusercontent.com 格式
         # 后者在国内环境下更容易通过代理访问
         url = re.sub(
@@ -118,10 +123,12 @@ class CodeExtractor:
                     with open(notfound_marker, "w", encoding="utf-8") as f:
                         f.write("")
                 print(f"      ⚠️ 404 不存在，已标记跳过: {url[:80]}...")
-            elif resp.status_code == 403:
-                print(f"      ⚠️ 下载限流，等待 60 秒...")
+            elif resp.status_code == 403 and retry_count < MAX_RETRY:
+                print(f"      ⚠️ 下载限流，等待 60 秒... (重试 {retry_count+1}/{MAX_RETRY})")
                 time.sleep(60)
-                return self._download_raw_file(url, notfound_marker)
+                return self._download_raw_file(url, notfound_marker, retry_count + 1)
+            elif resp.status_code == 403:
+                print(f"      ⚠️ 下载限流已达最大重试次数，放弃: {url[:80]}...")
             else:
                 print(f"      ⚠️ 下载失败: HTTP {resp.status_code} - {url[:80]}...")
         except requests.exceptions.Timeout:

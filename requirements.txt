@@ -1,0 +1,46 @@
+# ============================================================
+# 智能软件工程实践 - 统一依赖包
+# 合并 lab1 / lab2 / lab3 的所有依赖，消除版本冲突
+# ============================================================
+# 安装方式: pip install -r requirements.txt
+# PyTorch 需单独安装，不要在 requirements.txt 中指定
+
+# ========== 环境与工具 ==========
+python-dotenv>=1.0.0
+requests>=2.31.0
+tqdm>=4.66.0
+jupyter>=1.0.0
+
+# ========== 基础数据分析（lab1 / lab2 / lab3 共用） ==========
+numpy>=1.26.4
+pandas>=2.2.0
+scipy>=1.10.0
+scikit-learn>=1.3.0
+joblib>=1.3.0
+
+# ========== 可视化 ==========
+matplotlib>=3.8.0
+seaborn>=0.13.0
+
+# ========== GitHub API（lab1 专用） ==========
+PyGithub>=2.3.0
+
+# ========== 图结构与 AST 解析（lab2 专用） ==========
+networkx>=3.0
+tree-sitter>=0.20.0
+tree-sitter-languages>=1.10.2
+
+# ========== HuggingFace 生态 - CodeBERT 微调（lab3 专用） ==========
+transformers>=4.36.0
+datasets>=2.16.0
+accelerate>=0.25.0
+tokenizers>=0.15.0
+sentencepiece>=0.1.99
+safetensors>=0.4.0
+huggingface_hub>=0.20.0
+evaluate>=0.4.0
+
+# ========== 文本生成评估指标（lab3 专用） ==========
+nltk>=3.8.0
+rouge-score>=0.1.2
+sacrebleu>=2.3.0
