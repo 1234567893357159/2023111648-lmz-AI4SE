@@ -19,7 +19,7 @@ from sklearn.metrics import (
     roc_auc_score, confusion_matrix, roc_curve, auc,
 )
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 
 
@@ -152,7 +152,6 @@ class MLPredictor:
 
         lab2_report = os.path.join(config.LAB2_BASE_DIR, "data", "results", "evaluation_report.txt")
         if os.path.exists(lab2_report):
-            lab2_results = {}
             with open(lab2_report, "r", encoding="utf-8") as f:
                 content = f.read()
             return {"source": "evaluation_report.txt", "content": content}
@@ -282,17 +281,20 @@ class MLPredictor:
         print("步骤二结果摘要")
         print("=" * 60)
 
-        print(f"\n样本数量: {self.results['data_info']['total_samples']}")
-        print(f"  Merged: {self.results['data_info']['merged_count']} "
-              f"({self.results['data_info']['merged_ratio']:.1%})")
-        print(f"  Not Merged: {self.results['data_info']['not_merged_count']}")
+        data_info = self.results.get("data_info", {})
+        print(f"\n样本数量: {data_info.get('total_samples', 'N/A')}")
+        print(f"  Merged: {data_info.get('merged_count', 'N/A')} "
+              f"({data_info.get('merged_ratio', 0):.1%})")
+        print(f"  Not Merged: {data_info.get('not_merged_count', 'N/A')}")
 
         print(f"\n{'模型':<20} {'Acc':>8} {'Prec':>8} {'Rec':>8} {'F1':>8} {'AUC':>8}")
         print("-" * 60)
         for model_name in ["SVM", "Random Forest"]:
-            r = self.results[model_name]
-            print(f"{model_name:<20} {r['accuracy']:>8.4f} {r['precision']:>8.4f} "
-                  f"{r['recall']:>8.4f} {r['f1']:>8.4f} {r['roc_auc']:>8.4f}")
+            r = self.results.get(model_name, {})
+            if not r:
+                continue
+            print(f"{model_name:<20} {r.get('accuracy', 0):>8.4f} {r.get('precision', 0):>8.4f} "
+                  f"{r.get('recall', 0):>8.4f} {r.get('f1', 0):>8.4f} {r.get('roc_auc', 0):>8.4f}")
 
 
 def main():

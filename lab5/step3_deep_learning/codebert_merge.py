@@ -20,6 +20,8 @@ from sklearn.metrics import (
     f1_score, roc_auc_score, confusion_matrix, roc_curve,
 )
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import importlib
 import config
 importlib.reload(config)

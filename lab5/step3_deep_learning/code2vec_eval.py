@@ -19,7 +19,9 @@ from sklearn.metrics import (
     f1_score, roc_auc_score, confusion_matrix, roc_curve,
 )
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lab3", "task1_code2vec"))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "lab3", "task1_code2vec"))
+
 import importlib
 import config
 importlib.reload(config)
@@ -61,13 +63,22 @@ class Code2VecEvaluator:
         total_params = sum(p.numel() for p in self.model.parameters())
         print(f"  参数量: {total_params:,}")
 
+        if os.path.exists(config.LAB3_CODE2VEC_MODEL_PATH):
+            self.model.load_state_dict(torch.load(config.LAB3_CODE2VEC_MODEL_PATH, map_location=self.device))
+            print(f"  已加载 lab3 模型权重: {config.LAB3_CODE2VEC_MODEL_PATH}")
+        else:
+            print(f"  警告: 未找到 lab3 模型权重 ({config.LAB3_CODE2VEC_MODEL_PATH})，使用随机权重")
+
     def _load_ai_pr_list(self):
         pulls_dir = config.AI_PULLS_DIR
         pr_list = []
         for fname in os.listdir(pulls_dir):
             if fname.endswith("_pulls.json"):
+                repo_key = fname.replace("_pulls.json", "")
                 with open(os.path.join(pulls_dir, fname), "r", encoding="utf-8") as f:
                     prs = json.load(f)
+                for pr in prs:
+                    pr["_repo_key"] = repo_key
                 pr_list.extend(prs)
         return pr_list
 
@@ -87,7 +98,7 @@ class Code2VecEvaluator:
 
     def _extract_paths_for_pr(self, pr):
         pr_id = pr["pr_id"]
-        repo_key = f"{pr.get('owner', '')}_{pr.get('repo', '')}"
+        repo_key = pr.get("_repo_key", "")
         code_dir = os.path.join(config.AI_CODE_DIR, repo_key, str(pr_id))
 
         before_dir = os.path.join(code_dir, "before")
@@ -101,7 +112,11 @@ class Code2VecEvaluator:
         if not force_reevaluate and os.path.exists(config.STEP3_CACHE_VECTORS):
             print(f"加载缓存向量: {config.STEP3_CACHE_VECTORS}")
             data = torch.load(config.STEP3_CACHE_VECTORS, map_location="cpu")
-            return data["pr_ids"], data["labels"], data["vectors"]
+            vectors = data["vectors"].numpy()
+            if len(data["pr_ids"]) == 0:
+                print("  缓存为空，重新生成...")
+            else:
+                return data["pr_ids"], data["labels"], vectors
 
         pr_list = self._load_ai_pr_list()
         print(f"向量化 {len(pr_list)} 个 AI PR...")
@@ -136,6 +151,13 @@ class Code2VecEvaluator:
                 labels.append(1 if pr.get("merged", False) else 0)
                 vectors.append(pr_vec)
 
+        if len(vectors) == 0:
+            raise RuntimeError(
+                "向量化失败: 没有 PR 成功提取 AST 路径。\n"
+                "请确认 AI 代码已下载到: " + config.AI_CODE_DIR + "\n"
+                "请先运行步骤二的数据准备 (step2_traditional_ml/data_prepare.py) 或设置 force_reevaluate=True 并确保代码已存在"
+            )
+
         pr_ids = np.array(pr_ids)
         labels = np.array(labels)
         vectors = np.array(vectors)
@@ -153,12 +175,25 @@ class Code2VecEvaluator:
         print(f"  SVM: {config.LAB3_MODELS_DIR}/svm.pkl")
         self.clf_rf = joblib.load(os.path.join(config.LAB3_MODELS_DIR, "random_forest.pkl"))
         print(f"  RF: {config.LAB3_MODELS_DIR}/random_forest.pkl")
-        self.clf_mlp = joblib.load(os.path.join(config.LAB3_MODELS_DIR, "mlp.pkl"))
+        mlp_data = joblib.load(os.path.join(config.LAB3_MODELS_DIR, "mlp.pkl"))
+        self.clf_mlp = mlp_data["model"] if isinstance(mlp_data, dict) else mlp_data
         print(f"  MLP: {config.LAB3_MODELS_DIR}/mlp.pkl")
 
     def predict_and_evaluate(self, vectors, labels):
+        vectors = np.array(vectors)
+        if vectors.ndim == 1:
+            vectors = vectors.reshape(-1, 1)
+        labels = np.array(labels)
+
         self.y_true = labels
         print(f"\n样本数: {len(labels)}, merged={labels.sum()}, not_merged={(1-labels).sum()}")
+
+        if len(vectors) == 0:
+            raise RuntimeError(
+                "没有可用的向量数据！请先运行 step2 下载 AI 代码并生成 AST。\n"
+                f"如果已运行过 step2，请删除缓存文件后重试:\n"
+                f"  {config.STEP3_CACHE_VECTORS}"
+            )
 
         for name, clf in [("SVM", self.clf_svm), ("Random Forest", self.clf_rf), ("MLP", self.clf_mlp)]:
             print(f"\n{'='*50}")
@@ -268,8 +303,8 @@ class Code2VecEvaluator:
         if self.probabilities:
             for name, y_proba in self.probabilities.items():
                 fpr, tpr, _ = roc_curve(self.y_true, y_proba)
-                auc = roc_auc_score(self.y_true, y_proba)
-                ax.plot(fpr, tpr, lw=2, label=f"{name} (AUC={auc:.3f})")
+                auc_score = roc_auc_score(self.y_true, y_proba)
+                ax.plot(fpr, tpr, lw=2, label=f"{name} (AUC={auc_score:.3f})")
         ax.plot([0, 1], [0, 1], "k--", lw=1, label="Random (AUC=0.500)")
         ax.set_xlim([0.0, 1.0])
         ax.set_ylim([0.0, 1.05])

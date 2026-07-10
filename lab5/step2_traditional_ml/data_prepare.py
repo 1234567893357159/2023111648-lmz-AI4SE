@@ -13,8 +13,8 @@ import csv
 import time
 from typing import List, Dict, Set
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lab2"))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "lab2"))
 
 import config
 import pandas as pd
@@ -123,7 +123,6 @@ class AIDataPreparer:
         config.HUMAN_CODE_DIR = config.AI_CODE_DIR
         config.HUMAN_DIR = config.AI_PULLS_DIR
 
-        import code_extractor
         from code_extractor import CodeExtractor
         extractor = CodeExtractor()
 
@@ -188,7 +187,6 @@ class AIDataPreparer:
         config.HUMAN_CFG_DIR = config.AI_CFG_DIR
         config.HUMAN_CODE_DIR = config.AI_CODE_DIR
 
-        import ast_cfg_generator
         from ast_cfg_generator import ASTCFGGenerator
         generator = ASTCFGGenerator()
         files = generator._collect_code_files()
@@ -229,7 +227,7 @@ class AIDataPreparer:
             "code_before": os.path.join(config.AI_CODE_DIR, repo_key, str(pr_id), "before"),
             "code_after": os.path.join(config.AI_CODE_DIR, repo_key, str(pr_id), "after"),
             "ast_before": os.path.join(config.AI_AST_DIR, repo_key, str(pr_id), "before"),
-            "ast_after": os.path.join(config.AI_AST_DIR, repo_key, str(pr_id), "after"),
+            "ast_after": os.path.join(config.AI_AST_DIR, repo_key, str(pr_id), "before"),
             "cfg_before": os.path.join(config.AI_CFG_DIR, repo_key, str(pr_id), "before"),
             "cfg_after": os.path.join(config.AI_CFG_DIR, repo_key, str(pr_id), "after"),
         }

@@ -31,6 +31,7 @@ LAB2_CFG_DIR = os.path.join(LAB2_BASE_DIR, "data", "cfg", "human")
 
 # ========== Lab3 数据路径 ==========
 LAB3_MODELS_DIR = os.path.join(LAB3_BASE_DIR, "data", "results", "models")
+LAB3_CODE2VEC_MODEL_PATH = os.path.join(LAB3_MODELS_DIR, "code2vec_model.pt")
 LAB3_CODEBERT_MODEL_DIR = os.path.join(LAB3_BASE_DIR, "data", "codebert_models", "codebert_merge")
 LAB3_CODET5_MODEL_DIR = os.path.join(LAB3_BASE_DIR, "data", "codebert_models", "codet5_review")
 LAB3_VECTORS_DIR = os.path.join(LAB3_BASE_DIR, "data", "vectors")
@@ -119,6 +120,16 @@ TREE_SITTER_LANG_MAP = {
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 REQUEST_DELAY = 0.5
 
+# ========== Ollama 本地模型配置 ==========
+OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_MODEL = "qwen2.5-coder:7b"
+OLLAMA_TEMPERATURE = 0.0
+OLLAMA_MAX_TOKENS = 256
+MAX_RETRIES = 3
+REQUEST_INTERVAL = 0.1
+REQUEST_TIMEOUT = 300
+MAX_PROMPT_CHARS = 6000
+
 # 代理配置（与 lab2 一致）
 HTTP_PROXY = None
 HTTPS_PROXY = None
@@ -149,5 +160,51 @@ STEP3_TASK2_CODEBERT_PATH = os.path.join(LAB5_RESULTS_DIR, "step3_task2_codebert
 STEP3_TASK3_CODET5_PATH = os.path.join(LAB5_RESULTS_DIR, "step3_task3_codet5.json")
 STEP3_CACHE_VECTORS = os.path.join(LAB5_DATA_DIR, "step3_vectors.pt")
 
-# AST 路径缓存目录
-STEP3_AST_CACHE_DIR = os.path.join(LAB3_VECTORS_DIR, "ast_cache")
+# AST 路径缓存目录（lab3 模块使用 config.AST_CACHE_DIR）
+AST_CACHE_DIR = os.path.join(LAB3_VECTORS_DIR, "ast_cache")
+STEP3_AST_CACHE_DIR = AST_CACHE_DIR
+
+# ========== lab3 模块所需路径（从 lab3 导入） ==========
+VOCAB_PATH = os.path.join(LAB3_VECTORS_DIR, "vocab.json")
+VECTORS_DIR = LAB3_VECTORS_DIR
+TRAIN_VECTORS_PATH = os.path.join(LAB3_VECTORS_DIR, "train_vectors.pt")
+VAL_VECTORS_PATH = os.path.join(LAB3_VECTORS_DIR, "val_vectors.pt")
+TEST_VECTORS_PATH = os.path.join(LAB3_VECTORS_DIR, "test_vectors.pt")
+TRAIN_JSON_PATH = os.path.join(LAB3_BASE_DIR, "data", "train.json")
+VAL_JSON_PATH = os.path.join(LAB3_BASE_DIR, "data", "val.json")
+TEST_JSON_PATH = os.path.join(LAB3_BASE_DIR, "data", "test.json")
+TRAIN_RATIO = 0.8
+VAL_RATIO = 0.1
+LAB2_HUMAN_RAW_DIR = os.path.join(LAB2_BASE_DIR, "data", "raw", "human")
+
+# lab3 分类器参数
+SVM_C = 1.0
+SVM_KERNEL = "rbf"
+SVM_GAMMA = "scale"
+SVM_CLASS_WEIGHT = "balanced"
+RF_N_ESTIMATORS = 100
+RF_MAX_DEPTH = 10
+RF_MIN_SAMPLES_SPLIT = 5
+RF_CLASS_WEIGHT = "balanced"
+MLP_HIDDEN_LAYERS = (128, 64)
+MLP_MAX_ITER = 500
+MLP_LEARNING_RATE = 0.001
+MLP_BATCH_SIZE = 32
+MLP_EARLY_STOPPING = True
+MLP_VALIDATION_FRACTION = 0.1
+METRICS = ["accuracy", "precision", "recall", "f1", "roc_auc"]
+
+# CodeBERT/CodeT5 训练参数
+CODEBERT_BATCH_SIZE = 8
+CODET5_BATCH_SIZE = 4
+CODET5_LEARNING_RATE = 5e-5
+CODET5_EPOCHS = 5
+CODET5_WEIGHT_DECAY = 0.01
+CODET5_WARMUP_STEPS = 100
+CODET5_GRADIENT_ACCUMULATION_STEPS = 2
+CODET5_MODEL_DIR = LAB3_CODET5_MODEL_DIR
+
+# 输出目录（lab3 模块使用）
+RESULTS_DIR = os.path.join(LAB3_BASE_DIR, "data", "results")
+PLOTS_DIR = os.path.join(LAB3_BASE_DIR, "image")
+MODELS_DIR = LAB3_MODELS_DIR

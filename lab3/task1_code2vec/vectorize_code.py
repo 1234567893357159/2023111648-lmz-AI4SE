@@ -226,6 +226,10 @@ class CodeVectorizer:
         total_params = sum(p.numel() for p in self.model.parameters())
         print(f"  模型参数量: {total_params:,}")
 
+        model_path = os.path.join(config.MODELS_DIR, "code2vec_model.pt")
+        torch.save(self.model.state_dict(), model_path)
+        print(f"  模型权重已保存: {model_path}")
+
         print("\n[4/4] 向量化数据集...")
         train_vectors = self._vectorize_or_skip(train_prs, config.TRAIN_VECTORS_PATH, "训练集向量", force)
         val_vectors = self._vectorize_or_skip(val_prs, config.VAL_VECTORS_PATH, "验证集向量", force)

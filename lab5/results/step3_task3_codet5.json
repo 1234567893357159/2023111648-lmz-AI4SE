@@ -1,0 +1,81 @@
+{
+  "n_samples": 281,
+  "metrics": {
+    "n_samples": 281,
+    "bleu": 0.002929631109087739,
+    "rougeL": 0.06571563087062796
+  },
+  "examples": [
+    {
+      "pr_id": 188187,
+      "filename": "aten/src/ATen/native/mps/kernels/LossOps.metal",
+      "input_preview": "title: [MPS] Add `ctc_loss` backward pass\nbody: Stack from [ghstack](https://github.com/ezyang/ghstack/tree/0.14.0) (oldest at bottom):\r\n* __->__ #188187\r\n\r\nCloses #160828\r\n\r\nThe backward pass is broken up into two kernel calls, one to calculate `log_beta` and one to perform logsumexp-reduction of `",
+      "target": "We need to skip the boundary row in the beta sweeps or we will end up overwriting the initialization for it for padded inputs where `input_length < max_input_length` as it gets recomputed from the row above it that was set to -inf in the previous iteration.\n\n```suggestion\n      threadgroup_barrier(mem_flags::mem_device);\n      if (beta && t == input_length - 1) continue;\n```\n\nA minimal test case that'll exercise the problematic path:\n\n```\n  def test_ctc_loss_backward_varlen_mps(self):\n      # Backward must match CPU when input lengths are padded (shorter than T).\n      # T=20, batch=2, 7 classes; the second sequence is only 11 steps long.\n      T, N, C = 20, 2, 7\n      log_probs = torch.randn(T, N, C).log_softmax(2)\n      targets = torch.randint(1, C, (N, 4))\n      input_lengths = [20, 11]   # 11 < T is what exposes the bug\n      target_lengths = [4, 3]\n\n      def input_grad(device):\n          lp = log_probs.to(device).detach().requires_grad_()\n          torch.nn.functional.ctc_loss(\n              lp, targets.to(device), input_lengths, target_lengths\n          ).backward()\n          return lp.grad\n\n      self.assertEqual(input_grad(\"cpu\"), input_grad(\"mps\").cpu())\n``` | Thanks for catching that! I added the fix and figured I might as well add the test as well",
+      "prediction": "## Pull request overview\n\nAdds a new `ctc_loss` forward pass to the MPS kernel and adds a new `ctc_loss` forward pass to the MPS kernel.\n\n**Changes:**\n- Add a new `ctc_loss` forward pass to the MPS kernel.\n- Add a new `ctc_loss` forward pass to the MPS kernel.\n- Add a new `ctc_loss` forward pass to the MPS kernel.\n- Add a new `ctc_loss` backward-pass to the MPS kernel.\n- Add a new `ctc_loss` forward pass to the MPS kernel.\n\n<details>\n<summary>Show a summary per file</summary>\n\n| File | Description |\r\n| ---- | ----------- |\r\n| ---- | ----------- |\r\n| aten/src/ATen/native/mps/kernels/LossOps.py | Adds a new `ctc_loss.py | Adds a new `ctc_loss` forward pass to the MPS kernel. |\r\n| aten/src/ATen/native/mps/mps/"
+    },
+    {
+      "pr_id": 140006,
+      "filename": "plugin/pkg/admission/noderestriction/admission.go",
+      "input_preview": "title: Pod Certificates: Node-restriction support for signer names\nbody: Kubelet's ability to generate service account tokens is restricted by the noderestriction admission plugin, which checks to make sure that the relevant pod actually mounts a token volume with the requested audience.\r\n\r\nThis com",
+      "target": "Kube RBAC cannot easily express a resource with a `/` in it. | Hmmm.  I know we have the weird signername encoding that we used in ClusterTrustBundles.\r\n\r\n> ClusterTrustBundles that are associated with a signer have a required naming prefix: take the signer name, replace slashes (/) with colons (:), and append a colon at the end. | The use case I am trying to enable here is someone running a daemonset that uses constrained impersonation to act as the node.  I think Istio ambient falls into this category. | the signer → resource-name-safe string munging is gross but if we have to do it being consistent with CTB is ok | https://github.com/kubernetes/kubernetes/pull/130485#issuecomment-2707416960 was the discussion around the shape of the check for tokens | Suggestion from Jordan: \"request-serviceaccount-podcertificate-signer\" | Done. | Done.  I applied the same munging as used for ClusterTrustBundle names. | @liggitt should this check be behind its own FG or is opt-ing out via authz sufficient? | Extract the shared logic between this and the `request-serviceaccounts-token-audience` check (for example you are missing the version). | Done.  (Good catch on the version, the new code takes the version from the admission attributes) | If we don't want to change the behavior of v1beta1 (personally, I think that's fine... Kubelet is the only thing creating these right now), then I could only run this check if the API version is v1 | This logic is also shared between the two checks. | The error messages are different, and that's 50% of the code here.",
+      "prediction": "/lgtm\n/approve"
+    },
+    {
+      "pr_id": 323171,
+      "filename": "extensions/copilot/package.json",
+      "input_preview": "title: Enterprise OTel managed-settings policy\nbody: Adds enterprise managed-settings policies for OpenTelemetry, covering both VS Code OTel surfaces without introducing a new settings namespace.\n\n## What\n- `chat.agentHost.otel.*` settings own the OTel policies; the Copilot extension's `github.copil",
+      "target": "This setting now has an enterprise policy reference, but the description still claims the env var takes precedence and that it’s “user settings only”, which will be misleading once policy is configured. | This setting now has an enterprise policy reference, but the description still says `OTEL_EXPORTER_OTLP_ENDPOINT` takes precedence and that it’s “user settings only”, which contradicts the new enterprise-policy precedence. | This setting now has an enterprise policy reference, but the description still says the env var takes precedence and that it’s “user settings only”, which will be inaccurate when managed by policy.",
+      "prediction": "## ✅ Open SWE Review: No issues found\n\nOpen SWE reviewed this PR and found no potential bugs to report.\n\n[Open in Web](https://openswe.vercel.app/agents/reviews/langchain-ai/langchain/38383) • [View Open SWE trace](https://smith.langchain.com/o/ebbaf2eb-769b-4505-aca2-d11de10372a4/projects/p/f2e68aea-26b3-4a6a-9c4a-d04e7ebe2690/t/6e6e6-9a6-9a6-9a6-9a6a-9a6a-9c4a-d04e7ebe269b-9a6-9a6-9a6-9a6-9a6-9a6-9a6-9a6-9a6-9a6-9c9c9c9c9c9c9c9c9c9c9"
+    },
+    {
+      "pr_id": 188045,
+      "filename": "aten/src/ATen/mps/MPSAllocator.mm",
+      "input_preview": "title: [MPS] better memory allocator\nbody: I've always believed that the memory issues we encountered either during decode or during training with variable sequences such as these issues:\r\nhttps://github.com/pytorch/pytorch/issues/132596\r\nhttps://github.com/pytorch/pytorch/issues/152550\r\nhttps://git",
+      "target": "Should be able to cut this iteration short if the need is met before reaching the end, right?\n\n```suggestion\n      while (b != nullptr && releasable(b) && run < need) {\n```\n\nOr is it better to always scoop up as many trailing blocks as possible? | It's better to scoop up as many trailing blocks as possible. The point of this loop is coalescing so if we stop at `run >= need` that leaves adjacent free blocks unmerged",
+      "prediction": "Llama is really good as always. Please address the small nits."
+    },
+    {
+      "pr_id": 322780,
+      "filename": "build/azure-pipelines/win32/steps/product-build-win32-compile.yml",
+      "input_preview": "title: Cut over ThirdPartyNotices to the Component Governance generated notice\nbody: 🤖 AI Assisted PR\r\n\r\n## What\r\n\r\nCuts over VS Code's `ThirdPartyNotices.txt` from the legacy custom OSS-license tool to the Microsoft Component Governance (CG) generated notice. During each desktop platform build, the",
+      "target": "The Apply step doesn’t pass `VSCODE_OVERWRITE_TPN`. If the background deemon process wasn’t started (or attach ends up spawning a new process), `downloadNotice.ts` will default to enabled and may overwrite `ThirdPartyNotices.txt` even when the pipeline parameter requests the legacy notice.",
+      "prediction": "Copilot was unable to review this pull request because the user who requested the review has reached their quota limit."
+    },
+    {
+      "pr_id": 322780,
+      "filename": "build/azure-pipelines/common/downloadNotice.ts",
+      "input_preview": "title: Cut over ThirdPartyNotices to the Component Governance generated notice\nbody: 🤖 AI Assisted PR\r\n\r\n## What\r\n\r\nCuts over VS Code's `ThirdPartyNotices.txt` from the legacy custom OSS-license tool to the Microsoft Component Governance (CG) generated notice. During each desktop platform build, the",
+      "target": "`unzip()` writes zip entries to disk using `path.join(outputPath, entry.fileName)` without validating that the resulting path stays within `outputPath`. A crafted zip could use `../` segments (zip-slip) and overwrite files outside `.build/tmp-notice`, including repo files used later in the build. Add a path traversal guard before creating directories/files, and also handle write-stream errors explicitly so extraction failures reject the promise. | The feature-flag check is case-sensitive (`=== 'false'`). Azure Pipelines template expressions commonly produce `True`/`False`, and ad-hoc/manual runs may also set different casing. Making the check case-insensitive avoids coupling pipeline YAML to a specific string literal casing.",
+      "prediction": "Copilot was unable to review this pull request because the user who requested the review has reached their quota limit."
+    },
+    {
+      "pr_id": 322870,
+      "filename": "src/vs/platform/agentHost/electron-browser/localAgentHostService.ts",
+      "input_preview": "title: AH: honor yolo mode setting\nbody: <!-- Thank you for submitting a Pull Request. Please:\r\n* Read our Pull Request guidelines:\r\n  https://github.com/microsoft/vscode/wiki/How-to-Contribute#pull-requests\r\n* Associate an issue with the Pull Request.\r\n* Ensure that the code is up-to-date with the ",
+      "target": "`GLOBAL_AUTO_APPROVE_SETTING_ID` can be a boolean or an object configuration. Reading it via an untyped `getValue(...)` makes this easy to miss (and typically yields `any`). Consider reading as `unknown` first to make the boolean-only check explicit.",
+      "prediction": "## Pull request overview\n\nThis PR updates the Local Agent Host service to honor the Yolo mode setting.\n\n**Changes:**\n- Add a test for auto-approve + terminal auto-approve on the local agent host.\n- Add a test for auto-approve on the local agent host.\n- Add a test for auto-approve on the local agent host.\n- Add a test for terminal auto-approve on the local agent host.\n\n- Add test for auto-approve on the local agent host.\n\n<details open>\n<summary>Show a summary per file</summary>\n\n| File | Description |\r\n| ---- | ----------- |\r\n| src/vs/platform/agentHost/electron-browser/localAgentHostService.ts | Adds a test for auto-approve on the local agent host. |\r\n| src/vs/platform/agentHost/electron-browser/localAgentHostService.ts | Adds a test for auto-approve on the local agent host. |\r\n| src/vs/platform/agentHost"
+    },
+    {
+      "pr_id": 323158,
+      "filename": "src/vs/workbench/contrib/chat/test/browser/widget/chatContentParts/chatSubagentContentPart.test.ts",
+      "input_preview": "title: Display model name in subagent session\nbody: Fixes #321923\n\nThis pull request improves the Chat subagent UI by displaying the model name used by a subagent inline in the title and ensuring it is included in accessibility labels. It also adds tests to verify this behavior and introduces a dedi",
+      "target": "This assertion couples the test to the English word \"model\" (and would also fail if the rendered title ever legitimately contains that substring). It’s more robust to assert that, when no model is available, the button’s aria-label matches the rendered title text. | Addressed in c5682213. The test now asserts the button's aria-label equals the rendered title text (`getCollapseButtonLabel(button).textContent`) when no model is available, instead of matching the English word \"model\".",
+      "prediction": "Copilot was unable to review this pull request because the user who requested the review has reached their quota limit."
+    },
+    {
+      "pr_id": 323139,
+      "filename": "src/vs/sessions/contrib/changes/browser/changesActions.ts",
+      "input_preview": "title: sessions: header changes pill opens the default changeset\nbody: ## What\n\nThe Agents window session **header diff-stats pill** now opens the **default changeset** when activated, matching the stats it displays.\n\n## Why\n\nThe pill's label reflects the session's **default** changeset (`isDefault`",
+      "target": "Inline comments inside method bodies are generally kept to a single line in this codebase. This new 3-line comment can be condensed without losing clarity, keeping the method easier to scan.",
+      "prediction": "## Pull request overview\n\nThis PR updates the Agents window session changeset selection to match the default changeset. It's in a separate file list.\n\n**Changes:** The header pill's label reflects the session's default changeset (`setChangesetId(undefined)`), and the shared per-session diff editor.\n\n**Changes:** The shared per-session diff editor, whose file list comes from the `activeSessionChangesObs` object.\n\n**Changes:**\n- Select a changeset from the `activeSessionChangesViewObs` object.\n\n**Changes:**\n- Resets the changeset selection to the default changeset (`setChangesetId(undefined)` when activated.\n\n<details open>\n<summary>Show a summary per file</summary>\n\n| File | Description |\r\n| ---- | ----------- |\r\n| src/vs/sessions/contrib/changes/browser/changes"
+    },
+    {
+      "pr_id": 188110,
+      "filename": "test/test_cuda.py",
+      "input_preview": "title: [cudaMallocAsync] Trim the pool and retry once before raising OOM\nbody: When the `cudaMallocAsync` backend (`PYTORCH_ALLOC_CONF=backend:cudaMallocAsync`) returns OOM, the stream-ordered pool may still be holding freed-but-cached backing. Before declaring OOM, this change adds one last-ditch s",
+      "target": "The fix recovers by calling `cudaStreamSynchronize` on the very stream we stalled. So the instant B's first attempt OOMs, the main thread enters that sync and blocks there. It cannot flip the flag itself. A second thread flips the flag while the main thread is parked in the retry-sync, which ends the spin, lets the sync drain A's free, and lets the retry complete. The release is timed to land after B has been issued; releasing earlier would let A free in time for B to fit, and nothing would be tested. | Seems a bit scary, especially if there can be interference from the `per_process_memory_fraction` flag",
+      "prediction": "Copilot was unable to review this pull request because the user who requested the review has reached their quota limit."
+    }
+  ],
+  "human_baseline": {}
+}
