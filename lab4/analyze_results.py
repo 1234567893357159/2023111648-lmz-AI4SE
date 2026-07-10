@@ -8,7 +8,7 @@ import os
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-RESULTS_DIR = os.path.join(BASE_DIR, "data", "results")
+RESULTS_DIR = os.path.join(BASE_DIR, "results")
 SELECTED_PRS_PATH = os.path.join(BASE_DIR, "data", "selected_prs.json")
 
 FILES = [

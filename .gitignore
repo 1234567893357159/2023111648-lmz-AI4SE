@@ -9,6 +9,7 @@ __pycache__/
 
 # 本地数据（API 返回结果、下载的代码等，不提交）
 data/
+results/
 
 # IDE
 .vscode/

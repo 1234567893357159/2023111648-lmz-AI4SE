@@ -15,9 +15,11 @@ LAB1_RAW_DIR = os.path.join(LAB1_BASE_DIR, "data", "raw")
 # ========== Lab4 输出路径 ==========
 LAB4_DATA_DIR = os.path.join(BASE_DIR, "data")
 LAB4_FIGURES_DIR = os.path.join(BASE_DIR, "figures")
+LAB4_RESULTS_DIR = os.path.join(BASE_DIR, "results")
 
 os.makedirs(LAB4_DATA_DIR, exist_ok=True)
 os.makedirs(LAB4_FIGURES_DIR, exist_ok=True)
+os.makedirs(LAB4_RESULTS_DIR, exist_ok=True)
 
 # ========== 目标仓库（与 lab1 一致）==========
 TARGET_REPOS = [
@@ -37,14 +39,14 @@ SELECTED_PRS_PATH = os.path.join(LAB4_DATA_DIR, "selected_prs.json")
 SUMMARY_PATH = os.path.join(LAB4_DATA_DIR, "summary.json")
 CONTEXTS_PATH = os.path.join(LAB4_DATA_DIR, "contexts.json")
 RESULTS_PATH = os.path.join(LAB4_DATA_DIR, "results.json")
-RESULTS_DIR = os.path.join(LAB4_DATA_DIR, "results")
+RESULTS_DIR = LAB4_RESULTS_DIR
 
 # ========== Ollama 本地模型配置 ==========
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "qwen2.5-coder:7b"
 OLLAMA_TEMPERATURE = 0.0
-OLLAMA_MAX_TOKENS = 256
+OLLAMA_MAX_TOKENS = 512
 MAX_RETRIES = 3
 REQUEST_INTERVAL = 0.1
 REQUEST_TIMEOUT = 300
-MAX_PROMPT_CHARS = 6000
+MAX_PROMPT_CHARS = 25000

@@ -48,6 +48,15 @@ Code Change:
 +        return user
 Review Comment: Returning None from get_user may cause NPE at call sites. Consider throwing UserNotFoundException or returning Optional<User> for safer error handling."""
 
+# ========== JSON 输出强制约束 ==========
+JSON_FORMAT_INSTRUCTION = (
+    "IMPORTANT: Your ENTIRE response must be a single JSON object and nothing else. "
+    "Do NOT wrap the JSON in ```json``` or any other markdown. "
+    "Do NOT write any analysis, summary, introduction, or explanation. "
+    "Just the JSON on its own line:\n"
+    '{"decision": "Yes" or "No", "reason": "brief reason"}'
+)
+
 
 def build_prompt(context, task, prompt_type):
     """
@@ -73,8 +82,7 @@ def _build_merge_prompt(context, prompt_type):
     if prompt_type == "zero_shot":
         return (
             "Determine whether the following Pull Request code change is likely to be merged.\n\n"
-            "Output ONLY a JSON object, nothing else:\n"
-            '{"decision": "Yes" or "No", "reason": "brief reason"}\n\n'
+            f"{JSON_FORMAT_INSTRUCTION}\n\n"
             f"Code Change:\n{context}"
         )
 
@@ -87,8 +95,7 @@ def _build_merge_prompt(context, prompt_type):
             "---\n\n"
             "Now evaluate the following code change:\n\n"
             f"{context}\n\n"
-            "Output ONLY a JSON object, nothing else:\n"
-            '{"decision": "Yes" or "No", "reason": "brief reason"}'
+            f"{JSON_FORMAT_INSTRUCTION}"
         )
 
     elif prompt_type == "cot":
@@ -101,8 +108,9 @@ def _build_merge_prompt(context, prompt_type):
             "4. Code Style: Does the code follow project conventions?\n"
             "5. Conclusion: Based on the above, should this PR be merged?\n\n"
             f"Code Change:\n{context}\n\n"
-            "Provide your step-by-step analysis first, then output a JSON object:\n"
-            '{"decision": "Yes" or "No", "reason": "summary reason"}'
+            "Provide your step-by-step analysis in a single paragraph, "
+            "then output the JSON on the LAST line.\n\n"
+            f"{JSON_FORMAT_INSTRUCTION}"
         )
 
     elif prompt_type == "role_based":
@@ -116,8 +124,7 @@ def _build_merge_prompt(context, prompt_type):
             "- Free of security vulnerabilities\n\n"
             "Review the following code change and determine if it passes review:\n\n"
             f"{context}\n\n"
-            "Output ONLY a JSON object, nothing else:\n"
-            '{"decision": "Yes" or "No", "reason": "brief reason"}'
+            f"{JSON_FORMAT_INSTRUCTION}"
         )
 
     else:
