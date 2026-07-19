@@ -85,18 +85,18 @@ def compute_classification_metrics(data):
         label = r.get("label")
         if label is None:
             continue
-        y_true.append(label)
 
         decision = r.get("output_decision", "Unknown")
         if decision == "Yes":
+            y_true.append(label)
             y_pred.append(1)
             y_score.append(1.0)
         elif decision == "No":
+            y_true.append(label)
             y_pred.append(0)
             y_score.append(0.0)
         else:
-            y_pred.append(0)
-            y_score.append(0.5)
+            continue
 
     n = len(y_true)
     if n == 0:

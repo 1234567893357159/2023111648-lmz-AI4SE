@@ -1,6 +1,6 @@
 """
 步骤四：LLM 大模型评估
-使用 Ollama 对 AI 生成代码进行代码审查
+支持 Ollama (本地) 和 OpenAI 兼容 API (云端) 两种调用方式，对 AI 生成代码进行代码审查
 - Task 1: Merge Prediction（是否合并）
 - Task 2: Review Comment Generation（代码审查评论）
 - 4 种 Prompt: zero_shot / few_shot / cot / role_based
@@ -36,7 +36,15 @@ OLLAMA_URL = config.OLLAMA_URL
 OLLAMA_MODEL = config.OLLAMA_MODEL
 OLLAMA_TEMPERATURE = config.OLLAMA_TEMPERATURE
 OLLAMA_MAX_TOKENS = config.OLLAMA_MAX_TOKENS
+OPENAI_API_URL = config.OPENAI_API_URL
+OPENAI_API_KEY = config.OPENAI_API_KEY
+OPENAI_MODEL = config.OPENAI_MODEL
+OPENAI_TEMPERATURE = config.OPENAI_TEMPERATURE
+OPENAI_MAX_TOKENS = config.OPENAI_MAX_TOKENS
+OPENAI_THINKING = config.OPENAI_THINKING
 MAX_RETRIES = config.MAX_RETRIES
+JSON_RETRIES = config.JSON_RETRIES
+REQUEST_INTERVAL = config.REQUEST_INTERVAL
 REQUEST_TIMEOUT = config.REQUEST_TIMEOUT
 MAX_PROMPT_CHARS = config.MAX_PROMPT_CHARS
 
@@ -53,7 +61,20 @@ def _get_result_path(task, prompt_type):
 
 
 def call_llm(prompt):
-    """调用本地 Ollama 模型，返回 (response_text, latency)"""
+    """
+    根据 config.LLM_PROVIDER 自动选择底层 API 调用方式。
+    返回 (response_text, latency_seconds)。
+    """
+    if config.LLM_PROVIDER == "ollama":
+        return _call_ollama(prompt)
+    elif config.LLM_PROVIDER == "openai":
+        return _call_openai(prompt)
+    else:
+        raise ValueError(f"Unknown LLM_PROVIDER: {config.LLM_PROVIDER}")
+
+
+def _call_ollama(prompt):
+    """调用本地 Ollama API，返回 (response_text, latency_seconds)。"""
     if len(prompt) > MAX_PROMPT_CHARS:
         prompt = prompt[:MAX_PROMPT_CHARS] + "\n\n... (truncated)"
 
@@ -68,17 +89,94 @@ def call_llm(prompt):
     for attempt in range(MAX_RETRIES):
         try:
             start = time.time()
-            resp = requests.post(OLLAMA_URL, json=payload, timeout=REQUEST_TIMEOUT)
+            resp = requests.post(
+                OLLAMA_URL,
+                json=payload,
+                timeout=REQUEST_TIMEOUT,
+            )
             resp.raise_for_status()
             latency = time.time() - start
             text = resp.json().get("response", "")
             return text, latency
+
         except Exception as e:
             wait = 2 ** attempt
             print(f"  [Ollama 调用失败] {e}，{wait}s 后重试 ({attempt + 1}/{MAX_RETRIES})")
             time.sleep(wait)
 
     raise RuntimeError("Ollama 调用失败，已达最大重试次数")
+
+
+def _call_openai(prompt):
+    """调用 OpenAI 兼容 API，返回 (response_text, latency_seconds)。"""
+    if len(prompt) > MAX_PROMPT_CHARS:
+        prompt = prompt[:MAX_PROMPT_CHARS] + "\n\n... (truncated)"
+
+    payload = {
+        "model": OPENAI_MODEL,
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "stream": False,
+        "temperature": OPENAI_TEMPERATURE,
+        "max_tokens": OPENAI_MAX_TOKENS,
+    }
+    if OPENAI_THINKING:
+        payload["thinking"] = {"type": "enabled"}
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            start = time.time()
+            resp = requests.post(
+                OPENAI_API_URL,
+                json=payload,
+                headers=headers,
+                timeout=REQUEST_TIMEOUT,
+            )
+
+            if resp.status_code == 429:
+                retry_after = resp.headers.get("Retry-After")
+                if retry_after and retry_after.isdigit():
+                    wait = int(retry_after)
+                else:
+                    wait = 2 ** attempt
+                raise Exception(f"429 Too Many Requests (Retry-After: {retry_after or 'N/A'})")
+
+            resp.raise_for_status()
+            latency = time.time() - start
+            data = resp.json()
+
+            if not data:
+                raise ValueError("API 返回空响应体")
+
+            choices = data.get("choices")
+            if not choices or not isinstance(choices, list) or len(choices) == 0:
+                raise ValueError(f"API 返回异常 choices: {data}")
+
+            message = choices[0].get("message")
+            if not message:
+                raise ValueError(f"API 返回异常 message: {data}")
+
+            text = message.get("content")
+            if text is None:
+                finish_reason = choices[0].get("finish_reason", "N/A")
+                print(f"  [警告] API 返回空内容，finish_reason={finish_reason}，完整响应: {data}")
+                text = ""
+            return text, latency
+
+        except Exception as e:
+            if "429" in str(e):
+                pass
+            else:
+                wait = 2 ** attempt
+            print(f"  [OpenAI 调用失败] {e}，{wait}s 后重试 ({attempt + 1}/{MAX_RETRIES})")
+            time.sleep(wait)
+
+    raise RuntimeError("OpenAI 调用失败，已达最大重试次数")
 
 
 def parse_merge_result(text):
@@ -154,7 +252,7 @@ def compute_rouge_l(reference_tokens, candidate_tokens):
 
 
 class LLMEvaluator:
-    """LLM 评估器：使用 Ollama 对 AI 生成代码进行代码审查，支持断点续传"""
+    """LLM 评估器：支持 Ollama / OpenAI 双 Provider，对 AI 生成代码进行代码审查，支持断点续传"""
 
     def __init__(self):
         self.contexts = []
@@ -234,10 +332,29 @@ class LLMEvaluator:
                 continue
 
             prompt = build_prompt(context_text, task, prompt_type)
-            response_text, latency = call_llm(prompt)
 
             if task == "merge_prediction":
-                parsed = parse_merge_result(response_text)
+                total_latency = 0
+                for attempt in range(JSON_RETRIES):
+                    response_text, latency = call_llm(prompt)
+                    total_latency += latency
+                    parsed = parse_merge_result(response_text)
+                    if not parsed["parse_error"]:
+                        break
+                    if attempt < JSON_RETRIES - 1:
+                        print(f"  [JSON 解析失败] PR {pr_id}({ct}) 第 {attempt+1} 次输出非 JSON，重试...")
+                else:
+                    parsed = {
+                        "decision": "Unknown",
+                        "reason": f"{JSON_RETRIES}次重试仍无法解析为JSON",
+                        "parse_error": True,
+                        "raw": response_text,
+                    }
+                latency = total_latency
+            else:
+                response_text, latency = call_llm(prompt)
+
+            if task == "merge_prediction":
                 label = ctx_entry.get("label", 0)
                 record = {
                     "pr_id": pr_id,
@@ -275,6 +392,8 @@ class LLMEvaluator:
                 with open(result_path, "w", encoding="utf-8") as f:
                     json.dump(results, f, indent=2, ensure_ascii=False)
                 saved_at = len(results)
+
+            time.sleep(REQUEST_INTERVAL)
 
         if len(results) != saved_at:
             with open(result_path, "w", encoding="utf-8") as f:
@@ -346,8 +465,8 @@ class LLMEvaluator:
                 pred, score = 0, 0.0
                 n_no += 1
             else:
-                pred, score = 0, 0.5
                 n_unknown += 1
+                continue
 
             y_true.append(label)
             y_pred.append(pred)
@@ -514,7 +633,8 @@ class LLMEvaluator:
     def run_all(self):
         """执行完整流程"""
         print("=" * 60)
-        print("步骤四: LLM 代码审查测试 (Ollama)")
+        print("步骤四: LLM 代码审查测试")
+        print(f"  Provider: {config.LLM_PROVIDER}")
         print("=" * 60)
 
         self.load_contexts()

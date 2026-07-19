@@ -38,18 +38,18 @@ def compute_classification_metrics(data, label_map):
         pr_id = r.get("pr_id")
         if pr_id not in label_map:
             continue
-        y_true.append(label_map[pr_id])
 
         decision = r.get("output_decision", "Unknown")
         if decision == "Yes":
+            y_true.append(label_map[pr_id])
             y_pred.append(1)
             y_score.append(1.0)
         elif decision == "No":
+            y_true.append(label_map[pr_id])
             y_pred.append(0)
             y_score.append(0.0)
         else:
-            y_pred.append(0)
-            y_score.append(0.5)
+            continue
 
     n = len(y_true)
     if n == 0:

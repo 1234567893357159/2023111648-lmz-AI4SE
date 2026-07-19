@@ -81,9 +81,8 @@ def compute_merge_metrics(results, label_map):
             score = 0.0
             n_no += 1
         else:
-            pred = 0
-            score = 0.5
             n_unknown += 1
+            continue
 
         y_true.append(gt)
         y_pred.append(pred)
